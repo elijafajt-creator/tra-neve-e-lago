@@ -359,7 +359,7 @@ $('#loginForm').onsubmit=async e=>{
   e.preventDefault();$('#loginErr').textContent='';$('#l-btn').disabled=true;
   const{data,error}=await sb.auth.signInWithPassword({email:$('#l-email').value.trim(),password:$('#l-pass').value});
   $('#l-btn').disabled=false;
-  if(error){$('#loginErr').textContent='Accesso non riuscito: controlla email e password.';return}
+  if(error){$('#loginErr').textContent='Accesso non riuscito: '+error.message;return}
   user=data.user;$('#l-pass').value='';start();
 };
 
