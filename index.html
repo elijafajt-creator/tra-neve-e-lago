@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Tra Neve e Lago">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#072d52">
+<link rel="icon" href="/logo.png">
+<link rel="apple-touch-icon" href="/logo.png">
+<title>Tra Neve e Lago – Calendario</title>
+<script>
+window.addEventListener('error',function(e){var b=document.getElementById('jsCheck');if(b){b.style.display='block';b.textContent='⚠️ Errore: '+e.message+' (riga '+e.lineno+'). Mandami questo messaggio.'}});
+</script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{--navy:#072d52;--blue:#1f63b0;--sky:#85b5e8;--ice:#b5d3f2;--snow:#f1eee8;--bg:#f3f5f8;--card:#fff;--ink:#0d2238;--muted:#6b7a89;--line:#e1e7ee;--conflict:#d64545;--serif:Georgia,"Times New Roman",serif}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;font-family:-apple-system,system-ui,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--ink);padding-bottom:calc(76px + env(safe-area-inset-bottom))}
+.hidden{display:none!important}
+.logo svg{display:block;width:100%;height:100%}
+.caps{font-size:11px;letter-spacing:.32em;text-transform:uppercase;color:var(--sky)}
+
+/* accesso */
+#login{position:fixed;inset:0;z-index:50;background:linear-gradient(180deg,#072d52 0%,#0e3e70 100%);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;color:#fff;text-align:center;overflow:auto}
+#login .logo{width:150px;height:150px;margin-bottom:18px}
+#login h1{font-family:var(--serif);font-weight:400;font-size:34px;margin:0}
+#login .tag{font-family:var(--serif);font-style:italic;color:var(--ice);margin:8px 0 6px;font-size:16px}
+#login form{background:#fff;color:var(--ink);border-radius:16px;padding:18px;width:100%;max-width:340px;margin-top:26px;text-align:left}
+#loginErr{color:var(--conflict);font-size:13px;margin-top:8px;min-height:1em}
+#loginWait{margin-top:26px;max-width:320px;line-height:1.6}
+
+/* intestazione */
+header{background:var(--navy);color:#fff;padding:calc(10px + env(safe-area-inset-top)) 14px 10px;display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:5;box-shadow:0 2px 10px rgba(7,45,82,.25)}
+header .logo{width:42px;height:42px;flex-shrink:0}
+.brand{flex:1;min-width:0}
+.brand h1{font-family:var(--serif);font-weight:400;font-size:19px;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.brand .caps{font-size:9px;letter-spacing:.25em;display:block;margin-top:3px}
+header button{background:rgba(255,255,255,.12);color:#fff;border:1px solid rgba(255,255,255,.2);border-radius:10px;padding:8px 12px;font-size:14px;flex-shrink:0;cursor:pointer}
+@media(max-width:360px){.brand .caps{display:none}}
+
+main{max-width:760px;margin:0 auto;padding:14px 12px}
+.card{background:var(--card);border-radius:16px;padding:14px;margin-bottom:12px;box-shadow:0 1px 3px rgba(7,45,82,.08)}
+.card h3{margin:0 0 10px;font-family:var(--serif);font-weight:400;font-size:17px;color:var(--navy)}
+
+/* calendario */
+.monthbar{display:flex;align-items:center;gap:6px;margin-bottom:10px}
+.monthbar h2{font-family:var(--serif);font-weight:400;font-size:20px;margin:0;text-transform:capitalize;flex:1;color:var(--navy);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.iconbtn{border:1px solid var(--line);background:#fff;border-radius:10px;min-width:38px;height:38px;font-size:15px;padding:0 10px;color:var(--navy);cursor:pointer}
+.grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
+.wd{text-align:center;font-size:11px;color:var(--muted);padding:2px 0 4px;font-weight:600}
+.day{aspect-ratio:1/1;border-radius:9px;background:#f7f9fb;border:1px solid var(--line);position:relative;padding:4px 5px;font-size:12px;overflow:hidden;cursor:pointer}
+.day .n{font-weight:600;position:relative;z-index:1;color:var(--navy)}
+.day.wn .n{color:#fff}
+.day.today{outline:2px solid var(--blue);outline-offset:-1px}
+.day .lbl{position:absolute;left:3px;right:4px;bottom:3px;font-size:9px;color:#fff;text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:700;text-shadow:0 0 2px rgba(0,0,0,.35)}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-top:12px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center}
+.stats b{display:block;font-family:var(--serif);font-weight:400;font-size:22px;color:var(--navy)}
+.stats span{font-size:11px;color:var(--muted)}
+
+/* elenco */
+.item{display:flex;gap:10px;padding:11px 0;border-bottom:1px solid var(--line);cursor:pointer}
+.item:last-child{border-bottom:0}
+.stripe{width:5px;border-radius:3px;flex-shrink:0}
+.item .t{font-weight:600}.item .s{font-size:13px;color:var(--muted);margin-top:3px}
+.tag{font-size:11px;padding:2px 8px;border-radius:20px;color:#fff;margin-left:6px;font-weight:600;white-space:nowrap}
+.empty{color:var(--muted);font-size:14px;text-align:center;padding:14px}
+.chips{display:flex;gap:6px;margin-bottom:10px}
+.chip{border:1px solid var(--line);background:#fff;border-radius:20px;padding:7px 14px;font-size:14px;color:var(--navy);cursor:pointer}
+.chip.on{background:var(--navy);color:#fff;border-color:var(--navy)}
+
+/* navigazione */
+nav{position:fixed;bottom:0;left:0;right:0;display:flex;background:#fff;border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom);z-index:5}
+nav button{flex:1;padding:9px 0 8px;border:0;background:none;font-size:12px;color:var(--muted);cursor:pointer}
+nav button b{display:block;font-size:20px;font-weight:400}
+nav button.on{color:var(--navy);font-weight:700}
+.fab{position:fixed;right:16px;bottom:calc(84px + env(safe-area-inset-bottom));width:56px;height:56px;border-radius:50%;background:var(--blue);color:#fff;font-size:30px;border:0;box-shadow:0 4px 14px rgba(7,45,82,.35);z-index:6;cursor:pointer}
+
+/* modulo */
+.overlay{position:fixed;inset:0;background:rgba(7,45,82,.45);display:none;align-items:flex-end;justify-content:center;z-index:20}
+.overlay.open{display:flex}
+.sheet{background:#fff;width:100%;max-width:560px;max-height:92vh;overflow:auto;border-radius:18px 18px 0 0;padding:16px 16px calc(16px + env(safe-area-inset-bottom))}
+.sheet h2{margin:0;font-family:var(--serif);font-weight:400;font-size:20px;color:var(--navy)}
+.sheethead{display:flex;justify-content:space-between;align-items:center}
+@media(min-width:700px){.overlay{align-items:center}.sheet{border-radius:18px}}
+label{display:block;font-size:12px;color:var(--muted);margin:10px 0 4px}
+input,select,textarea{width:100%;padding:11px;border:1px solid var(--line);border-radius:10px;font-size:16px;font-family:inherit;background:#fff;color:var(--ink)}
+input:focus,select:focus,textarea:focus{outline:2px solid var(--ice);border-color:var(--sky)}
+input:disabled,select:disabled{background:#f1f3f5;color:#888}
+.check{display:flex;align-items:center;gap:8px;margin-top:12px;font-size:15px;color:var(--ink)}
+.check input{width:22px;height:22px}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.btn{padding:12px 14px;border-radius:10px;border:0;font-size:15px;font-weight:600;background:var(--navy);color:#fff;cursor:pointer;text-align:center;text-decoration:none;display:inline-block}
+.btn:disabled{opacity:.6}
+.btn.sec{background:#eef2f6;color:var(--navy)}
+.btn.danger{background:#fbe9e9;color:var(--conflict)}
+.actions{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}
+.actions .btn{flex:1}
+.warn{background:#fdecec;color:var(--conflict);padding:10px;border-radius:10px;font-size:13px;margin-top:10px}
+.note{background:#eaf2fc;color:#1f4f8f;padding:10px;border-radius:10px;font-size:13px;margin-top:10px}
+.muted{color:var(--muted);font-size:13px}
+.toast{position:fixed;left:50%;bottom:calc(92px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--navy);color:#fff;padding:10px 16px;border-radius:10px;font-size:14px;z-index:60;opacity:0;transition:opacity .2s;pointer-events:none;max-width:90vw;text-align:center}
+.toast.show{opacity:1}
+</style>
+</head>
+<body>
+<div id="jsCheck" style="display:none;position:fixed;top:0;left:0;right:0;z-index:100;background:#d64545;color:#fff;padding:10px;font-size:13px;text-align:center"></div>
+
+<!-- ACCESSO -->
+<section id="login">
+  <div class="logo" id="loginLogo"></div>
+  <h1>Tra Neve e Lago</h1>
+  <div class="tag">Where the mountains meet the clear waters</div>
+  <div class="caps">Your base in the Julian Alps</div>
+  <p id="loginWait" class="caps">Caricamento…</p>
+  <form id="loginForm" class="hidden">
+    <label>Email</label><input id="l-email" type="email" autocomplete="username" required>
+    <label>Password</label><input id="l-pass" type="password" autocomplete="current-password" required>
+    <button class="btn" style="width:100%;margin-top:16px" id="l-btn">Accedi</button>
+    <div id="loginErr"></div>
+  </form>
+</section>
+
+<div id="app" class="hidden">
+<header>
+  <div class="logo" id="hLogo"></div>
+  <div class="brand"><h1 id="hName">Tra Neve e Lago</h1><span class="caps">Calendario prenotazioni</span></div>
+  <button id="hSync">⟳ Booking</button>
+</header>
+
+<main>
+  <section id="v-cal">
+    <div class="card">
+      <div class="monthbar">
+        <h2 id="monthTitle"></h2>
+        <button class="iconbtn" id="prev" aria-label="Mese precedente">‹</button>
+        <button class="iconbtn" id="todayBtn">Oggi</button>
+        <button class="iconbtn" id="next" aria-label="Mese successivo">›</button>
+      </div>
+      <div class="grid" id="grid"></div>
+      <div class="legend">
+        <span><i style="background:#2e9e6b"></i>Diretta</span>
+        <span><i style="background:#1f63b0"></i>Booking</span>
+        <span><i style="background:#e08a2c"></i>Altro</span>
+        <span><i style="background:#d64545"></i>Conflitto</span>
+      </div>
+    </div>
+    <div class="card"><div class="stats" id="stats"></div></div>
+    <div class="card"><h3>Prossimi arrivi</h3><div id="upcoming"></div></div>
+  </section>
+
+  <section id="v-list" class="hidden">
+    <div class="chips">
+      <button class="chip on" data-f="future">Future</button>
+      <button class="chip" data-f="past">Passate</button>
+      <button class="chip" data-f="all">Tutte</button>
+    </div>
+    <input id="search" placeholder="🔍 Cerca ospite, telefono, note…" style="margin-bottom:10px">
+    <div class="card"><div id="list"></div></div>
+  </section>
+
+  <section id="v-set" class="hidden">
+    <div class="card">
+      <h3>Struttura</h3>
+      <label>Nome casa vacanze</label>
+      <input id="s-name" placeholder="Tra Neve e Lago">
+    </div>
+    <div class="card">
+      <h3>Sincronizzazione Booking.com</h3>
+      <label>Link iCal di esportazione Booking</label>
+      <input id="s-ical" placeholder="https://ical.booking.com/v1/export?t=…">
+      <p class="muted" id="s-last"></p>
+      <div class="actions">
+        <button class="btn" id="s-sync">⟳ Sincronizza ora</button>
+        <button class="btn sec" id="s-icsbtn">📥 Importa file .ics</button>
+      </div>
+      <input type="file" id="s-icsfile" accept=".ics,text/calendar" class="hidden">
+    </div>
+    <div class="card">
+      <h3>Backup</h3>
+      <p class="muted">I dati sono nel database online e si vedono da tutti i tuoi dispositivi. Il backup è una copia di sicurezza in più.</p>
+      <div class="actions">
+        <button class="btn sec" id="s-export">💾 Esporta backup</button>
+        <button class="btn sec" id="s-importbtn">📂 Ripristina backup</button>
+      </div>
+      <div class="actions"><button class="btn sec" id="s-exportics">📅 Esporta dirette (.ics)</button></div>
+      <input type="file" id="s-importfile" accept=".json,application/json" class="hidden">
+    </div>
+    <div class="card">
+      <h3>Account</h3>
+      <p class="muted" id="s-user"></p>
+      <div class="actions"><button class="btn sec" id="s-logout">Esci</button></div>
+      <div class="actions"><button class="btn danger" id="s-wipe">Cancella tutti i dati</button></div>
+    </div>
+  </section>
+</main>
+
+<button class="fab" id="fab" aria-label="Nuova prenotazione">+</button>
+
+<nav>
+  <button data-v="cal" class="on"><b>📅</b>Calendario</button>
+  <button data-v="list"><b>📋</b>Prenotazioni</button>
+  <button data-v="set"><b>⚙️</b>Impostazioni</button>
+</nav>
+</div>
+
+<div class="overlay" id="ov">
+  <form class="sheet" id="form">
+    <div class="sheethead"><h2 id="f-title">Nuova prenotazione</h2><button type="button" class="iconbtn" id="f-close">✕</button></div>
+    <div class="note hidden" id="f-synced">Prenotazione sincronizzata da Booking: le date si aggiornano da sole. Puoi aggiungere nome, prezzo e note.</div>
+    <label>Origine</label>
+    <select id="f-source">
+      <option value="diretta">Diretta</option>
+      <option value="booking">Booking</option>
+      <option value="altro">Altro (Airbnb, agenzia…)</option>
+    </select>
+    <div class="row">
+      <div><label>Check-in</label><input type="date" id="f-in" required></div>
+      <div><label>Check-out</label><input type="date" id="f-out" required></div>
+    </div>
+    <div class="muted" id="f-nights" style="margin-top:6px"></div>
+    <div class="warn hidden" id="f-warn"></div>
+    <label>Ospite</label><input id="f-guest" placeholder="Nome e cognome">
+    <div class="row">
+      <div><label>Telefono</label><input id="f-phone" type="tel" placeholder="+39 …"></div>
+      <div><label>N. ospiti</label><input id="f-guests" type="number" min="1" inputmode="numeric"></div>
+    </div>
+    <div class="actions" id="f-contact"></div>
+    <label>Email</label><input id="f-email" type="email">
+    <div class="row">
+      <div><label>Prezzo totale (€)</label><input id="f-price" type="number" step="0.01" inputmode="decimal"></div>
+      <div><label>Acconto ricevuto (€)</label><input id="f-deposit" type="number" step="0.01" inputmode="decimal"></div>
+    </div>
+    <label class="check"><input type="checkbox" id="f-paid"> Saldato completamente</label>
+    <label>Note</label><textarea id="f-notes" rows="3" placeholder="Orario arrivo, richieste, chiavi…"></textarea>
+    <div class="actions">
+      <button type="button" class="btn danger hidden" id="btn-del">Elimina</button>
+      <button type="submit" class="btn" id="btn-save">Salva</button>
+    </div>
+  </form>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const OLD_KEY='casaVacanze.v1';
+const SRC={diretta:{n:'Diretta',c:'#2e9e6b'},booking:{n:'Booking',c:'#1f63b0'},altro:{n:'Altro',c:'#e08a2c'}};
+const $=s=>document.querySelector(s);
+let sb=null,user=null,started=false,syncing=false;
+let state={bookings:[],settings:{}},vy=new Date().getFullYear(),vm=new Date().getMonth(),filter='future',editing=null;
+
+/* ---------- logo ---------- */
+function logoSvg(){return `<svg viewBox="0 0 200 200" aria-hidden="true">
+<circle cx="100" cy="100" r="96" fill="#072d52" stroke="#1f63b0" stroke-width="2.5"/>
+<polygon points="47.1,27.2 10.4,99.6 83.8,99.6" fill="#85b5e8"/>
+<polygon points="100,11.1 42.7,99.6 157.3,99.6" fill="#b5d3f2"/>
+<polygon points="152.8,43.2 116.2,99.6 189.5,99.6" fill="#85b5e8"/>
+<polygon points="47.1,27.2 36.8,51.1 57.5,51.1" fill="#f1eee8"/>
+<polygon points="100,11.1 88,36.8 111.9,36.8" fill="#f1eee8"/>
+<polygon points="152.8,43.2 143.9,60.7 161.5,60.7" fill="#f1eee8"/>
+<g fill="#85b5e8" opacity=".22">
+<polygon points="10.4,99.6 83.8,99.6 47.1,160.6"/>
+<polygon points="42.7,99.6 157.3,99.6 100,167.9"/>
+<polygon points="116.2,99.6 189.5,99.6 152.8,147.9"/>
+</g>
+<g fill="none" stroke="#2a6fc0" stroke-width="1.3">
+<path d="M12 110.6 Q28 107.5 44 110 T76 110.6" opacity=".9"/>
+<path d="M28 120.7 Q50 117.5 70 120.3 T111 120.7" opacity=".75"/>
+<path d="M44 131.9 Q66 129 89 131.4 T133 131.9" opacity=".6"/>
+<path d="M60 143 Q83 140 106 142.5 T152 143" opacity=".45"/>
+</g>
+<line x1="4" y1="99.6" x2="196" y2="99.6" stroke="#3b8ee0" stroke-width="1.6"/>
+</svg>`}
+
+/* ---------- utilità ---------- */
+const pad=n=>String(n).padStart(2,'0');
+const ymd=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const pd=s=>{const[y,m,d]=s.split('-').map(Number);return new Date(y,m-1,d)};
+const addDays=(s,n)=>{const d=pd(s);d.setDate(d.getDate()+n);return ymd(d)};
+const nights=(a,b)=>Math.round((pd(b)-pd(a))/864e5);
+const today=()=>ymd(new Date());
+const fmt=s=>pd(s).toLocaleDateString('it-IT',{day:'numeric',month:'short',year:pd(s).getFullYear()!==new Date().getFullYear()?'numeric':undefined});
+const eur=n=>(Number(n)||0).toLocaleString('it-IT',{style:'currency',currency:'EUR'});
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const newId=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+const overlap=(a,b)=>a.checkin<b.checkout&&b.checkin<a.checkout;
+const conflicts=x=>state.bookings.filter(b=>b.id!==x.id&&overlap(b,x));
+const gname=b=>b.guest||(b.synced?'Ospite Booking':'Senza nome');
+const col=b=>(SRC[b.source]||SRC.altro).c;
+const numOrNull=v=>v===''||v==null||isNaN(Number(v))?null:Number(v);
+function toast(msg,ms=2500){const t=$('#toast');t.textContent=msg;t.classList.add('show');clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove('show'),ms)}
+function download(name,text,type){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([text],{type}));a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},800)}
+
+/* ---------- database ---------- */
+function toRow(b){return{id:b.id,source:b.source||'diretta',checkin:b.checkin,checkout:b.checkout,
+  guest:b.guest||null,phone:b.phone||null,email:b.email||null,
+  guests:b.guests===''||b.guests==null?null:(parseInt(b.guests,10)||null),
+  price:numOrNull(b.price),deposit:numOrNull(b.deposit),paid:!!b.paid,notes:b.notes||null,
+  synced:!!b.synced,uid:b.uid||null,summary:b.summary||null,updated_at:new Date().toISOString()}}
+function fromRow(r){return{id:r.id,source:r.source,checkin:r.checkin,checkout:r.checkout,guest:r.guest||'',phone:r.phone||'',
+  email:r.email||'',guests:r.guests??'',price:r.price??'',deposit:r.deposit??'',paid:!!r.paid,notes:r.notes||'',
+  synced:!!r.synced,uid:r.uid||'',summary:r.summary||''}}
+const norm=b=>({...b,id:b.id||newId(),source:b.source||'diretta'});
+async function upsertMany(list){if(!list.length)return{error:null};return sb.from('bookings').upsert(list.map(toRow))}
+async function loadCloud(){
+  const[b,s]=await Promise.all([sb.from('bookings').select('*'),sb.from('settings').select('*').maybeSingle()]);
+  if(b.error)throw b.error;
+  state.bookings=b.data.map(fromRow);
+  const d=s.data;
+  state.settings={name:d?.name||'',icalUrl:d?.ical_url||'',lastSync:d?.last_sync||null};
+}
+async function saveSettings(){
+  const s=state.settings;
+  const{error}=await sb.from('settings').upsert({user_id:user.id,name:s.name||null,ical_url:s.icalUrl||null,last_sync:s.lastSync||null});
+  if(error)toast('⚠️ Impostazioni non salvate: '+error.message,5000);
+}
+async function migrateLocal(){
+  let old=null;try{old=JSON.parse(localStorage.getItem(OLD_KEY)||'null')}catch(e){}
+  if(!old||!Array.isArray(old.bookings)||!old.bookings.length||state.bookings.length)return;
+  if(!confirm(`Su questo dispositivo ci sono ${old.bookings.length} prenotazioni della versione precedente. Caricarle nel database?`))return;
+  const{error}=await upsertMany(old.bookings.filter(b=>b.checkin&&b.checkout).map(norm));
+  if(error){toast('⚠️ Caricamento non riuscito: '+error.message,5000);return}
+  if(old.settings){state.settings.name=state.settings.name||old.settings.name||'';state.settings.icalUrl=state.settings.icalUrl||old.settings.icalUrl||'';await saveSettings()}
+  localStorage.removeItem(OLD_KEY);
+  await loadCloud();toast('Dati caricati nel database ✓');
+}
+
+/* ---------- avvio e accesso ---------- */
+function showLogin(msg){
+  $('#app').classList.add('hidden');$('#login').classList.remove('hidden');
+  if(!sb){$('#loginWait').textContent=msg||'';return}
+  $('#loginWait').classList.add('hidden');$('#loginForm').classList.remove('hidden');
+  $('#loginErr').textContent=msg||'';
+}
+async function init(){
+  $('#loginLogo').innerHTML=logoSvg();$('#hLogo').innerHTML=logoSvg();
+  try{
+    const r=await fetch('/api/config',{cache:'no-store'});const c=await r.json();
+    if(!c.url||!c.key)throw 0;
+    sb=supabase.createClient(c.url,c.key,{auth:{persistSession:true,autoRefreshToken:true}});
+  }catch(e){showLogin('Configurazione Supabase mancante: controlla le variabili su Vercel.');return}
+  sb.auth.onAuthStateChange(ev=>{if(ev==='SIGNED_OUT'){user=null;started=false;state={bookings:[],settings:{}};showLogin()}});
+  const{data:{session}}=await sb.auth.getSession();
+  if(session){user=session.user;start()}else showLogin();
+}
+async function start(){
+  if(started)return;started=true;
+  $('#login').classList.add('hidden');$('#app').classList.remove('hidden');
+  renderAll();
+  try{await loadCloud()}catch(e){toast('⚠️ Impossibile caricare i dati: '+e.message,5000)}
+  await migrateLocal();
+  renderAll();autoSync();
+}
+$('#loginForm').onsubmit=async e=>{
+  e.preventDefault();$('#loginErr').textContent='';$('#l-btn').disabled=true;
+  const{data,error}=await sb.auth.signInWithPassword({email:$('#l-email').value.trim(),password:$('#l-pass').value});
+  $('#l-btn').disabled=false;
+  if(error){$('#loginErr').textContent='Accesso non riuscito: controlla email e password.';return}
+  user=data.user;$('#l-pass').value='';start();
+};
+
+/* ---------- calendario ---------- */
+function cellInfo(ds){
+  const cov=state.bookings.filter(b=>b.checkin<=ds&&ds<b.checkout);
+  const dep=state.bookings.find(b=>b.checkout===ds);
+  if(cov.length>1)return{bg:'#d64545',b:cov[0],conflict:true,wn:true,arr:true};
+  const c=cov[0];
+  if(c&&c.checkin!==ds)return{bg:col(c),b:c,wn:true};
+  if(c&&dep)return{bg:`linear-gradient(135deg,${col(dep)} 50%,${col(c)} 50%)`,b:c,arr:true,wn:true};
+  if(c)return{bg:`linear-gradient(135deg,transparent 50%,${col(c)} 50%)`,b:c,arr:true};
+  if(dep)return{bg:`linear-gradient(135deg,${col(dep)} 50%,transparent 50%)`,wn:true};
+  return{};
+}
+function renderCal(){
+  const first=new Date(vy,vm,1),dim=new Date(vy,vm+1,0).getDate(),off=(first.getDay()+6)%7,t=today();
+  $('#monthTitle').textContent=first.toLocaleDateString('it-IT',{month:'long',year:'numeric'});
+  let h=['L','M','M','G','V','S','D'].map(d=>`<div class="wd">${d}</div>`).join('');
+  for(let i=0;i<off;i++)h+='<div></div>';
+  let occ=0;
+  for(let d=1;d<=dim;d++){
+    const ds=`${vy}-${pad(vm+1)}-${pad(d)}`,st=cellInfo(ds);
+    if(st.b)occ++;
+    const cls=['day'];if(ds===t)cls.push('today');if(st.wn)cls.push('wn');
+    const lbl=st.arr?`<div class="lbl">${st.conflict?'⚠️ Conflitto':esc(gname(st.b))}</div>`:'';
+    h+=`<div class="${cls.join(' ')}" data-ds="${ds}"${st.bg?` style="background:${st.bg}"`:''}><span class="n">${d}</span>${lbl}</div>`;
+  }
+  $('#grid').innerHTML=h;
+  const ms=`${vy}-${pad(vm+1)}-01`,me=addDays(ms,dim);
+  const rev=state.bookings.filter(b=>b.checkin>=ms&&b.checkin<me).reduce((s,b)=>s+(Number(b.price)||0),0);
+  $('#stats').innerHTML=`<div><b>${occ}/${dim}</b><span>notti occupate</span></div><div><b>${Math.round(occ/dim*100)}%</b><span>occupazione</span></div><div><b>${eur(rev)}</b><span>incassi arrivi del mese</span></div>`;
+  const up=state.bookings.filter(b=>b.checkout>=t).sort((a,b)=>a.checkin.localeCompare(b.checkin)).slice(0,5);
+  $('#upcoming').innerHTML=up.length?up.map(itemHtml).join(''):'<div class="empty">Nessuna prenotazione in arrivo</div>';
+}
+function itemHtml(b){
+  const n=nights(b.checkin,b.checkout),s=SRC[b.source]||SRC.altro;
+  const due=b.price&&!b.paid?Math.max(0,(+b.price||0)-(+b.deposit||0)):0;
+  const cf=conflicts(b).length?' ⚠️':'';
+  return `<div class="item" data-id="${esc(b.id)}"><div class="stripe" style="background:${s.c}"></div><div style="flex:1;min-width:0">
+  <div class="t">${esc(gname(b))}${cf}<span class="tag" style="background:${s.c}">${s.n}${b.synced?' ⟳':''}</span></div>
+  <div class="s">${fmt(b.checkin)} → ${fmt(b.checkout)} · ${n} nott${n===1?'e':'i'}${b.guests?' · '+esc(b.guests)+' osp.':''}</div>
+  ${b.price?`<div class="s">${eur(b.price)}${b.paid?' · ✅ saldato':due?' · da incassare '+eur(due):''}</div>`:''}</div></div>`;
+}
+function renderList(){
+  const t=today(),q=$('#search').value.trim().toLowerCase();
+  let l=state.bookings.filter(b=>filter==='all'||(filter==='future'?b.checkout>=t:b.checkout<t));
+  if(q)l=l.filter(b=>[b.guest,b.phone,b.email,b.notes,b.summary].join(' ').toLowerCase().includes(q));
+  l.sort((a,b)=>filter==='past'?b.checkin.localeCompare(a.checkin):a.checkin.localeCompare(b.checkin));
+  $('#list').innerHTML=l.length?l.map(itemHtml).join(''):'<div class="empty">Nessuna prenotazione</div>';
+}
+function renderSet(){
+  const s=state.settings;
+  $('#s-name').value=s.name||'';$('#s-ical').value=s.icalUrl||'';
+  $('#s-last').textContent=s.lastSync?'Ultima sincronizzazione: '+new Date(s.lastSync).toLocaleString('it-IT'):'Mai sincronizzato';
+  $('#s-user').textContent=user?'Accesso come '+user.email:'';
+}
+function renderAll(){$('#hName').textContent=state.settings.name||'Tra Neve e Lago';renderCal();renderList();renderSet()}
+
+/* ---------- modulo ---------- */
+function openForm(b,ds){
+  editing=b||null;
+  const st=ds||today(),v=b||{source:'diretta',checkin:st,checkout:addDays(st,1)};
+  $('#f-title').textContent=b?'Prenotazione':'Nuova prenotazione';
+  $('#f-source').value=v.source;
+  ['guest','phone','email','guests','price','deposit','notes'].forEach(k=>$('#f-'+k).value=v[k]??'');
+  $('#f-in').value=v.checkin;$('#f-out').value=v.checkout;$('#f-paid').checked=!!v.paid;
+  const sy=!!(b&&b.synced);
+  $('#f-source').disabled=$('#f-in').disabled=$('#f-out').disabled=sy;
+  $('#f-synced').classList.toggle('hidden',!sy);
+  $('#btn-del').classList.toggle('hidden',!b||sy);
+  updForm();$('#ov').classList.add('open');
+}
+function closeForm(){$('#ov').classList.remove('open');editing=null}
+function waNumber(p){let d=p.replace(/[^\d]/g,'');if(p.trim().startsWith('+'))return d;if(d.startsWith('00'))return d.slice(2);if(d.length===10&&d.startsWith('3'))return '39'+d;return d}
+function updForm(){
+  const a=$('#f-in').value,o=$('#f-out').value,ok=a&&o&&o>a;
+  $('#f-nights').textContent=ok?`${nights(a,o)} notti`:(a&&o?'⚠️ Il check-out deve essere dopo il check-in':'');
+  const c=ok?conflicts({checkin:a,checkout:o,id:editing?.id}):[];
+  const w=$('#f-warn');w.classList.toggle('hidden',!c.length);
+  w.innerHTML=c.length?'⚠️ Si sovrappone a: '+c.map(x=>esc(gname(x))+' ('+fmt(x.checkin)+' – '+fmt(x.checkout)+')').join(', '):'';
+  const p=$('#f-phone').value.trim();
+  $('#f-contact').innerHTML=p?`<a class="btn sec" href="tel:${esc(p.replace(/\s/g,''))}">📞 Chiama</a><a class="btn sec" href="https://wa.me/${waNumber(p)}" target="_blank" rel="noopener">💬 WhatsApp</a>`:'';
+}
+async function saveForm(e){
+  e.preventDefault();
+  const a=$('#f-in').value,o=$('#f-out').value;
+  if(!a||!o||o<=a){toast('Il check-out deve essere dopo il check-in');return}
+  const data={guest:$('#f-guest').value.trim(),phone:$('#f-phone').value.trim(),email:$('#f-email').value.trim(),
+    guests:$('#f-guests').value,price:$('#f-price').value,deposit:$('#f-deposit').value,paid:$('#f-paid').checked,notes:$('#f-notes').value.trim()};
+  if(!editing||!editing.synced)Object.assign(data,{source:$('#f-source').value,checkin:a,checkout:o});
+  const b={...(editing||{id:newId(),synced:false}),...data};
+  if(conflicts(b).length&&!confirm('Le date si sovrappongono a un\'altra prenotazione. Salvare comunque?'))return;
+  $('#btn-save').disabled=true;
+  const{error}=await sb.from('bookings').upsert(toRow(b));
+  $('#btn-save').disabled=false;
+  if(error){toast('⚠️ Salvataggio non riuscito: '+error.message,5000);return}
+  const i=state.bookings.findIndex(x=>x.id===b.id);if(i>=0)state.bookings[i]=b;else state.bookings.push(b);
+  closeForm();renderAll();toast('Salvato ✓');
+}
+async function delBooking(){
+  if(!editing||!confirm('Eliminare questa prenotazione?'))return;
+  const id=editing.id;
+  const{error}=await sb.from('bookings').delete().eq('id',id);
+  if(error){toast('⚠️ Eliminazione non riuscita: '+error.message,5000);return}
+  state.bookings=state.bookings.filter(b=>b.id!==id);
+  closeForm();renderAll();toast('Eliminata');
+}
+
+/* ---------- iCal Booking ---------- */
+function icsDate(v){const m=v.match(/(\d{4})(\d{2})(\d{2})/);return m?`${m[1]}-${m[2]}-${m[3]}`:null}
+const unesc=s=>s.replace(/\\n/gi,' ').replace(/\\,/g,',').replace(/\\;/g,';').replace(/\\\\/g,'\\');
+function parseICS(text){
+  const lines=text.replace(/\r?\n[ \t]/g,'').split(/\r?\n/);const evs=[];let cur=null;
+  for(const raw of lines){
+    const l=raw.trim();
+    if(l==='BEGIN:VEVENT')cur={};
+    else if(l==='END:VEVENT'){if(cur&&cur.start){if(!cur.end||cur.end<=cur.start)cur.end=addDays(cur.start,1);evs.push(cur)}cur=null}
+    else if(cur){
+      const i=l.indexOf(':');if(i<0)continue;
+      const k=l.slice(0,i).split(';')[0].toUpperCase(),v=l.slice(i+1);
+      if(k==='DTSTART')cur.start=icsDate(v);else if(k==='DTEND')cur.end=icsDate(v);
+      else if(k==='SUMMARY')cur.summary=unesc(v);else if(k==='UID')cur.uid=v;
+    }
+  }
+  return evs;
+}
+async function applyIcs(text,silent){
+  const evs=parseICS(text);
+  const old=new Map(state.bookings.filter(b=>b.synced).map(b=>[b.uid,b]));
+  const fresh=evs.map(e=>{
+    const uid=e.uid||(e.start+'_'+e.end),o=old.get(uid)||{};
+    return{id:o.id||newId(),synced:true,source:'booking',uid,checkin:e.start,checkout:e.end,summary:e.summary||'',
+      guest:o.guest||'',phone:o.phone||'',email:o.email||'',guests:o.guests||'',price:o.price||'',deposit:o.deposit||'',paid:!!o.paid,notes:o.notes||''};
+  });
+  if(!fresh.length&&old.size&&(silent||!confirm('Il calendario Booking risulta vuoto. Rimuovere le prenotazioni Booking esistenti?')))return;
+  const keep=new Set(fresh.map(b=>b.id));
+  const gone=state.bookings.filter(b=>b.synced&&!keep.has(b.id)).map(b=>b.id);
+  let r=await upsertMany(fresh);if(r.error)throw r.error;
+  if(gone.length){r=await sb.from('bookings').delete().in('id',gone);if(r.error)throw r.error}
+  state.bookings=state.bookings.filter(b=>!b.synced).concat(fresh);
+  state.settings.lastSync=new Date().toISOString();
+  await saveSettings();renderAll();
+  if(!silent)toast(`Booking: ${fresh.length} prenotazioni sincronizzate ✓`);
+}
+async function sync(silent){
+  const url=(state.settings.icalUrl||'').trim();
+  if(!url){if(!silent)toast('Inserisci il link iCal di Booking nelle Impostazioni');return}
+  if(syncing)return;syncing=true;
+  if(!silent)toast('Sincronizzazione…');
+  try{
+    const r=await fetch('/api/ical?url='+encodeURIComponent(url),{cache:'no-store'});
+    const t=await r.text();
+    if(!r.ok||!t.includes('BEGIN:VCALENDAR'))throw new Error(t.slice(0,80)||r.status);
+    await applyIcs(t,silent);
+  }catch(e){if(!silent)toast('⚠️ Sincronizzazione non riuscita: '+e.message,5000)}
+  finally{syncing=false}
+}
+function autoSync(){const s=state.settings;if(s.icalUrl&&(!s.lastSync||Date.now()-new Date(s.lastSync)>30*60e3))sync(true)}
+
+/* ---------- esportazione ---------- */
+function exportIcs(){
+  const st=new Date().toISOString().replace(/[-:]/g,'').split('.')[0]+'Z';
+  const L=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//TraNeveELago//IT','CALSCALE:GREGORIAN'];
+  state.bookings.filter(b=>!b.synced).forEach(b=>L.push('BEGIN:VEVENT',`UID:${b.id}@traneveelago`,`DTSTAMP:${st}`,
+    `DTSTART;VALUE=DATE:${b.checkin.replace(/-/g,'')}`,`DTEND;VALUE=DATE:${b.checkout.replace(/-/g,'')}`,'SUMMARY:Occupato','END:VEVENT'));
+  L.push('END:VCALENDAR');
+  download('prenotazioni-dirette.ics',L.join('\r\n'),'text/calendar');
+}
+
+/* ---------- eventi ---------- */
+$('#prev').onclick=()=>{vm--;if(vm<0){vm=11;vy--}renderCal()};
+$('#next').onclick=()=>{vm++;if(vm>11){vm=0;vy++}renderCal()};
+$('#todayBtn').onclick=()=>{const d=new Date();vy=d.getFullYear();vm=d.getMonth();renderCal()};
+$('#grid').onclick=e=>{const c=e.target.closest('.day');if(!c)return;const st=cellInfo(c.dataset.ds);st.b?openForm(st.b):openForm(null,c.dataset.ds)};
+document.addEventListener('click',e=>{const it=e.target.closest('.item');if(it){const b=state.bookings.find(x=>x.id===it.dataset.id);if(b)openForm(b)}});
+document.querySelectorAll('nav button').forEach(btn=>btn.onclick=()=>{
+  document.querySelectorAll('nav button').forEach(x=>x.classList.toggle('on',x===btn));
+  ['cal','list','set'].forEach(v=>$('#v-'+v).classList.toggle('hidden',v!==btn.dataset.v));
+  $('#fab').classList.toggle('hidden',btn.dataset.v==='set');window.scrollTo(0,0);
+});
+document.querySelectorAll('.chip').forEach(c=>c.onclick=()=>{filter=c.dataset.f;document.querySelectorAll('.chip').forEach(x=>x.classList.toggle('on',x===c));renderList()});
+$('#search').oninput=renderList;
+$('#fab').onclick=()=>openForm(null);
+$('#f-close').onclick=closeForm;
+$('#ov').onclick=e=>{if(e.target.id==='ov')closeForm()};
+$('#form').onsubmit=saveForm;
+$('#btn-del').onclick=delBooking;
+['f-in','f-out','f-phone'].forEach(id=>$('#'+id).addEventListener('input',updForm));
+$('#f-in').addEventListener('change',()=>{const a=$('#f-in').value,o=$('#f-out').value;if(a&&(!o||o<=a))$('#f-out').value=addDays(a,1);updForm()});
+$('#s-name').onchange=async e=>{state.settings.name=e.target.value.trim();await saveSettings();renderAll()};
+$('#s-ical').onchange=async e=>{state.settings.icalUrl=e.target.value.trim();await saveSettings()};
+$('#s-sync').onclick=async()=>{state.settings.icalUrl=$('#s-ical').value.trim();await saveSettings();sync(false)};
+$('#hSync').onclick=()=>sync(false);
+$('#s-icsbtn').onclick=()=>$('#s-icsfile').click();
+$('#s-icsfile').onchange=async e=>{
+  const f=e.target.files[0];e.target.value='';if(!f)return;
+  const t=await f.text();if(!t.includes('BEGIN:VCALENDAR')){toast('File .ics non valido');return}
+  try{await applyIcs(t,false)}catch(err){toast('⚠️ Importazione non riuscita: '+err.message,5000)}
+};
+$('#s-export').onclick=()=>download(`backup-traneveelago-${today()}.json`,JSON.stringify(state,null,2),'application/json');
+$('#s-importbtn').onclick=()=>$('#s-importfile').click();
+$('#s-importfile').onchange=async e=>{
+  const f=e.target.files[0];e.target.value='';if(!f)return;
+  let d;try{d=JSON.parse(await f.text());if(!Array.isArray(d.bookings))throw 0}catch(err){toast('File di backup non valido');return}
+  if(!confirm(`Ripristinare ${d.bookings.length} prenotazioni? I dati attuali verranno sostituiti.`))return;
+  let r=await sb.from('bookings').delete().neq('id','');if(r.error){toast('⚠️ '+r.error.message,5000);return}
+  r=await upsertMany(d.bookings.filter(b=>b.checkin&&b.checkout).map(norm));if(r.error){toast('⚠️ '+r.error.message,5000);return}
+  if(d.settings){state.settings.name=d.settings.name||state.settings.name;state.settings.icalUrl=d.settings.icalUrl||state.settings.icalUrl;await saveSettings()}
+  await loadCloud();renderAll();toast('Backup ripristinato ✓');
+};
+$('#s-exportics').onclick=exportIcs;
+$('#s-logout').onclick=()=>sb.auth.signOut();
+$('#s-wipe').onclick=async()=>{
+  if(!confirm('Cancellare TUTTE le prenotazioni e impostazioni dal database?')||!confirm('Sicuro? L\'operazione non si può annullare.'))return;
+  const r1=await sb.from('bookings').delete().neq('id','');
+  const r2=await sb.from('settings').delete().eq('user_id',user.id);
+  if(r1.error||r2.error){toast('⚠️ Cancellazione non riuscita',5000);return}
+  state={bookings:[],settings:{}};renderAll();toast('Dati cancellati');
+};
+document.addEventListener('visibilitychange',async()=>{
+  if(document.hidden||!started)return;
+  try{await loadCloud();renderAll()}catch(e){}
+  autoSync();
+});
+
+init();
+</script>
+</body>
+</html>
